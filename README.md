@@ -1,116 +1,161 @@
-# Claude Code — LiteLLM proxy config
+# Claude Code — Free Model Config
 
-Point Claude Code at your own LLM backend (Ollama, LiteLLM, etc.) instead of
-using Anthropic's API.
+Run Anthropic's coding agents (Claude Code, OpenCode) on free/local LLMs
+through a [LiteLLM](https://litellm.vercel.app/) proxy, with disciplined
+engineering workflows [loaded as skills](#skills).
 
-## Quick start
+## Quick Start
+
+All tools share one flow: configure `.env` → detect models → source env →
+launch.
 
 ```bash
-# 1. Copy the example config
+cp .env.example .env          # edit with your LiteLLM URL + key
+./generate-settings env > settings.txt   # auto-detect best models
+
+source settings.txt && claude            # Claude Code
+source settings.txt && opencode          # OpenCode
+```
+
+## Per-Tool Setup
+
+### Claude Code
+
+```bash
+# Install skills (see Skills section below first)
 cp .env.example .env
-# Edit .env with your LiteLLM URL and admin key
-
-# 2. Auto-detect the best models from your proxy
-./generate-settings
-
-# 3. Write settings to file
 ./generate-settings env > settings.txt
-
-# 4. Source them when running Claude Code
 source settings.txt && claude
 ```
 
-## How it works
+Uses `ANTHROPIC_*` env vars from `settings.txt`. The `CLAUDE.md` file bakes in
+workflow rules — skills load automatically by situation.
 
-[LiteLLM](https://litellm.vercel.app/) is a proxy that exposes any LLM
-(Ollama, OpenAI-compatible, etc.) through a single API. Claude Code talks to
-it as if it were Anthropic's API.
+### OpenCode
 
-The `generate-settings` script:
-
-1. Connects to your LiteLLM proxy's `/model/info` endpoint
-2. Finds models with `supports_function_calling=true` (required for Claude
-   Code tool use)
-3. Picks the **fastest** model (smallest context) for `HAIKU` and the **most
-   capable** (largest context) for `SONNET`
-4. Prints the required environment variables
-
-## Commands
+Same env vars, different skills path:
 
 ```bash
-# List available models with their capabilities
-./generate-settings models
-
-# Print shell exports (default)
-./generate-settings env
-
-# JSON output (for programmatic use)
-./generate-settings json
+cp .env.example .env
+./generate-settings env > settings.txt
+source settings.txt && opencode
 ```
 
-## Override model selection
+Skills go in `~/.config/opencode/skills/` (see Skills section).
+
+### OpenClaw
+
+Uses `openclaw.json` instead of env vars. Add a LiteLLM provider
+and (optionally) an NVIDIA NIM provider for cloud fallback:
+
+```json
+{
+  "providers": [
+    {
+      "name": "litellm",
+      "type": "openai",
+      "baseUrl": "http://LITELLM_HOST:4000",
+      "apiKey": "sk-...",
+      "models": ["hermes3:8b", "deepseek-v4-flash"]
+    },
+    {
+      "name": "nvidia-nim",
+      "type": "openai",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "apiKey": "nvapi-...",
+      "models": ["deepseek-ai/deepseek-v4-flash"]
+    }
+  ]
+}
+```
+
+### Hermes3:8b (local via Ollama)
 
 ```bash
-HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
+ollama pull hermes3:8b
 ```
 
-## Manual config
+Then register it in your LiteLLM config (`litellm.yaml`):
 
-If you prefer not to use the script, copy `settings.example.txt` to
-`settings.txt` and fill in your values.
-
-```bash
-cp settings.example.txt settings.txt
-# Edit settings.txt with your models and credentials
-source settings.txt
-claude
+```yaml
+model_list:
+  - model_name: hermes3:8b
+    litellm_params:
+      model: ollama/hermes3:8b
+      api_base: http://OLLAMA_HOST:11434
 ```
 
-## Project structure
+## Model Recommendations
 
-```
-├── CLAUDE.md              # Engineering rules for Claude Code sessions
-├── .env.example           # Template for LiteLLM credentials
-├── .gitignore             # Excludes settings.txt, .env
-├── generate-settings      # Auto-detect models from proxy
-├── settings.example.txt   # Example manual config
-├── settings.txt           # Your actual config (gitignored)
-└── README.md
-```
+| Role | Model | Runs On |
+|------|-------|---------|
+| Haiku (fast) | `hermes3:8b` | Ollama (local) |
+| Sonnet (capable) | `deepseek-v4-flash` | NVIDIA NIM (free cloud) |
+| Subagent | `hermes3:8b` | Ollama (local) |
+
+Auto-detect yours: `./generate-settings models`
 
 ## Skills
 
-Claude Code uses skills — specialized instruction sets — to enforce disciplined
-workflows. This repo references skills from two sources:
+Skills teach the agent disciplined workflows. This repo references:
 
-1. **[9arm-skills](https://github.com/thananon/9arm-skills)** — debug-mantra,
-   scrutinize, post-mortem, management-talk
-2. **[superpowers](https://github.com/anomalyco/superpowers)** — brainstorming,
-   writing-plans, test-driven-development, verification-before-completion,
-   requesting-code-review, receiving-code-review
+- **[9arm-skills](https://github.com/thananon/9arm-skills)** by
+  [@thananon](https://github.com/thananon) — debug-mantra, scrutinize,
+  post-mortem, management-talk
+- **[superpowers](https://github.com/anomalyco/superpowers)** by
+  [@anomalyco](https://github.com/anomalyco) — brainstorming, writing-plans,
+  test-driven-development, verification-before-completion
 
-Install them by cloning and symlinking into `~/.config/opencode/skills/`:
+Install:
 
 ```bash
 # 9arm-skills
 git clone https://github.com/thananon/9arm-skills.git /tmp/9arm-skills
 for dir in /tmp/9arm-skills/skills/engineering/* /tmp/9arm-skills/skills/productivity/*; do
-  ln -sfn "$dir" ~/.config/opencode/skills/"$(basename "$dir")"
+  ln -sfn "$dir" ~/.claude/skills/"$(basename "$dir")"
+  ln -sfn "$dir" ~/.config/opencode/skills/"$(basename "$dir")" 2>/dev/null || true
 done
 
 # superpowers
 git clone https://github.com/anomalyco/superpowers.git /tmp/superpowers
 for dir in /tmp/superpowers/skills/*/; do
-  ln -sfn "$dir" ~/.config/opencode/skills/"$(basename "$dir")"
+  ln -sfn "$dir" ~/.claude/skills/"$(basename "$dir")"
+  ln -sfn "$dir" ~/.config/opencode/skills/"$(basename "$dir")" 2>/dev/null || true
 done
 ```
 
-After installing skills, Claude Code can load them by name as directed in
-`CLAUDE.md`.
+## Scripts
 
-## Engineering Process
+```
+./generate-settings           # print shell env vars (default)
+./generate-settings env       # same as above
+./generate-settings models    # list available models
+./generate-settings json      # JSON output
+```
 
-Once the project is set up, Claude Code reads `CLAUDE.md` at session start and
-follows disciplined workflows — load skills for debugging, TDD for features,
-verification before completion, and post-mortems for bugs. See `CLAUDE.md` for
-the full rules.
+Override model selection:
+
+```bash
+HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
+```
+
+## Repo Structure
+
+```
+├── CLAUDE.md              # Engineering rules for Claude Code
+├── README.md
+├── generate-settings      # Auto-detect models from LiteLLM proxy
+├── settings.txt           # Active config (gitignored, created by setup)
+├── settings.example.txt   # Manual config template
+├── .env                   # LiteLLM credentials (gitignored)
+├── .env.example           # Template
+└── .gitignore
+```
+
+## Credits
+
+LiteLLM proxy — [BerriAI/litellm](https://github.com/BerriAI/litellm)
+9arm-skills — [thananon/9arm-skills](https://github.com/thananon/9arm-skills)
+Superpowers — [anomalyco/superpowers](https://github.com/anomalyco/superpowers)
+Ollama — [ollama/ollama](https://github.com/ollama/ollama)
+NVIDIA NIM — [build.nvidia.com](https://build.nvidia.com/explore/discover)
