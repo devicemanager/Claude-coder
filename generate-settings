@@ -131,18 +131,18 @@ SUBAGENT="${SUBAGENT_OVERRIDE:-$SONNET}"
 case "$OUTPUT" in
   env)
     cat <<ENV
-# Claude Code settings — auto-generated $(date +%Y-%m-%d)
+# Auto-generated $(date +%Y-%m-%d) — append to .env
 # Source: $LITELLM_URL
 # Haiku (fastest tool-capable):  ${HAIKU:-<none>}
 # Sonnet (most capable):         ${SONNET:-<none>}
 # Subagent:                      ${SUBAGENT:-<none>}
 
-export ANTHROPIC_BASE_URL="$LITELLM_URL"
-export ANTHROPIC_AUTH_TOKEN="$ADMIN_KEY"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="${HAIKU}"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="${SONNET}"
-export CLAUDE_CODE_SUBAGENT_MODEL="${SUBAGENT}"
-export ANTHROPIC_MODEL="sonnet"
+ANTHROPIC_BASE_URL="$LITELLM_URL"
+ANTHROPIC_AUTH_TOKEN="$ADMIN_KEY"
+ANTHROPIC_DEFAULT_HAIKU_MODEL="${HAIKU}"
+ANTHROPIC_DEFAULT_SONNET_MODEL="${SONNET}"
+CLAUDE_CODE_SUBAGENT_MODEL="${SUBAGENT}"
+ANTHROPIC_MODEL="sonnet"
 ENV
     ;;
   json)
@@ -185,7 +185,7 @@ for m in sorted(data.get('data', []), key=lambda x: x['model_name']):
   *)
     echo "Usage: $0 [env|json|models]"
     echo ""
-    echo "  env     - shell exports (default)"
+    echo "  env     - .env-compatible vars (default)"
     echo "  json    - JSON output"
     echo "  models  - list available models"
     echo ""

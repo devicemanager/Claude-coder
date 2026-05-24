@@ -10,11 +10,11 @@ All tools share one flow: configure `.env` → detect models → source env →
 launch.
 
 ```bash
-cp .env.example .env          # edit with your LiteLLM URL + key
-./generate-settings env > settings.txt   # auto-detect best models
+cp .env.example .env                # edit with your LiteLLM URL + key
+./generate-settings env >> .env     # auto-detect best models
 
-source settings.txt && claude            # Claude Code
-source settings.txt && opencode          # OpenCode
+source .env && claude               # Claude Code
+source .env && opencode             # OpenCode
 ```
 
 ## Per-Tool Setup
@@ -24,12 +24,12 @@ source settings.txt && opencode          # OpenCode
 ```bash
 # Install skills (see Skills section below first)
 cp .env.example .env
-./generate-settings env > settings.txt
-source settings.txt && claude
+./generate-settings env >> .env
+source .env && claude
 ```
 
-Uses `ANTHROPIC_*` env vars from `settings.txt`. The `CLAUDE.md` file bakes in
-workflow rules — skills load automatically by situation.
+The `CLAUDE.md` file bakes in workflow rules — skills load automatically by
+situation.
 
 ### OpenCode
 
@@ -37,8 +37,8 @@ Same env vars, different skills path:
 
 ```bash
 cp .env.example .env
-./generate-settings env > settings.txt
-source settings.txt && opencode
+./generate-settings env >> .env
+source .env && opencode
 ```
 
 Skills go in `~/.config/opencode/skills/` (see Skills section).
@@ -149,9 +149,7 @@ HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
 ├── CLAUDE.md              # Engineering rules for Claude Code
 ├── README.md
 ├── generate-settings      # Auto-detect models from LiteLLM proxy
-├── settings.txt           # Active config (gitignored, created by setup)
-├── settings.example.txt   # Manual config template
-├── .env                   # LiteLLM credentials (gitignored)
+├── .env                   # Credentials + model config (gitignored)
 ├── .env.example           # Template
 └── .gitignore
 ```

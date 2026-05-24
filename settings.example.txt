@@ -1,9 +1,0 @@
-# Claude Code settings — copy to settings.txt and fill in your values
-# Or better: run ./generate-settings to auto-detect models from your proxy.
-
-export ANTHROPIC_BASE_URL="http://LITELLM_HOST:LITELLM_PORT"
-export ANTHROPIC_AUTH_TOKEN="LITELLM_API_KEY"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="qwen3.5:0.8b"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="qwen3.6:latest"
-export CLAUDE_CODE_SUBAGENT_MODEL="qwen3.6:latest"
-export ANTHROPIC_MODEL="sonnet"
