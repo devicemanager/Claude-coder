@@ -14,7 +14,7 @@ Claude Code / OpenCode
     ▼
 ┌─────────────────────┐
 │   LiteLLM Proxy     │  ← translates formats
-│   :4000             │
+│   (proxy host)
 └─────────┬───────────┘
     │              │
     ▼              ▼
@@ -26,41 +26,17 @@ Without LiteLLM, you would need a model that natively speaks the Anthropic
 protocol — very few open models do. LiteLLM handles the translation so Claude
 Code can talk to any model provider.
 
-## Replace variables
-
-Throughout this guide, replace these placeholders with your actual values:
-
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `LITELLM_HOST` | `LITELLM_HOST` | IP/hostname where LiteLLM runs |
-| `LITELLM_PORT` | `4000` | Port LiteLLM listens on |
-| `OLLAMA_HOST` | `OLLAMA_HOST` | IP/hostname where Ollama runs |
-| `OLLAMA_PORT` | `11434` | Port Ollama listens on (default) |
-| `LITELLM_API_KEY` | `sk-your-random-admin-key` | Admin key for the proxy |
-
-Wherever you see `$LITELLM_HOST`, `$OLLAMA_HOST`, etc. in a code example,
-substitute your actual value. These are formatted as shell variables so you
-can optionally export them before running the commands.
-
 ## Architecture
+
+This setup runs LiteLLM on a server and connects the proxy to:
+
+| Backend | Host | Models |
+|---------|------|--------|
+| Ollama | `$OLLAMA_HOST` | hermes3:8b, llama3.1:8b, qwen3.6, etc. |
+| NVIDIA NIM | `integrate.api.nvidia.com` | deepseek-v4-flash (cloud) |
 
 Clients (Claude Code, OpenCode, OpenClaw) point their `ANTHROPIC_BASE_URL` at
 the LiteLLM proxy and never talk to Ollama or NVIDIA directly.
-
-```
-Claude Code / OpenCode       Ollama       NVIDIA NIM
-    │                          │              │
-    │  Anthropic Messages      │ollama API    │OpenAI API
-    ▼                          ▼              ▼
-┌─────────────────────┐   ┌──────────┐  ┌──────────────┐
-│   LiteLLM Proxy     │←──│ Ollama   │  │ NVIDIA NIM   │
-│   :$LITELLM_PORT    │   │ :11434   │  │ (cloud)      │
-└─────────────────────┘   └──────────┘  └──────────────┘
-        │  translates formats
-        │  (Anthropic ↔ OpenAI)
-        ▼
-    Any LLM backend
-```
 
 ## Installation
 
@@ -114,7 +90,7 @@ litellm_settings:
 **Optional — PostgreSQL for persistence:**
 ```yaml
 general_settings:
-  database_url: "postgresql://user:pass@127.0.0.1:5432/litellm_db"
+  database_url: "postgresql://user:pass@localhost/litellm_db"
   master_key: "sk-your-admin-key"
   store_model_in_db: true
 
@@ -126,13 +102,13 @@ litellm_settings:
 
 ```bash
 cd /opt/litellm
-uv run litellm --config /opt/litellm/litellm.yaml --port 4000
+uv run litellm --config /opt/litellm/litellm.yaml --port "$LITELLM_PORT"
 ```
 
-The proxy listens on `http://0.0.0.0:4000`. Test it:
+The proxy listens on the configured host and port. Test it:
 
 ```bash
-curl http://localhost:4000/health
+curl "http://localhost:$LITELLM_PORT/health"
 ```
 
 ### 4. Register models
@@ -140,7 +116,7 @@ curl http://localhost:4000/health
 With `store_model_in_db: true`, models are registered through the API:
 
 ```bash
-curl -X POST "http://localhost:4000/model/new" \
+curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
   -H "x-api-key: sk-your-admin-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -158,7 +134,7 @@ Ollama host.
 **NVIDIA NIM models** use `openai/<model-path>` with the NVIDIA API key:
 
 ```bash
-curl -X POST "http://localhost:4000/model/new" \
+curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
   -H "x-api-key: sk-your-admin-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -175,7 +151,7 @@ curl -X POST "http://localhost:4000/model/new" \
 
 ```bash
 curl -s -H "x-api-key: sk-your-admin-key" \
-  "http://localhost:4000/model/info" | python3 -m json.tool
+  "http://localhost:$LITELLM_PORT/model/info" | python3 -m json.tool
 ```
 
 ### 5. Run LiteLLM as a service
@@ -191,7 +167,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/litellm
-ExecStart=/usr/local/bin/uv run litellm --config /opt/litellm/litellm.yaml --port 4000
+ExecStart=/usr/local/bin/uv run litellm --config /opt/litellm/litellm.yaml --port "$LITELLM_PORT"
 Restart=always
 User=root
 
@@ -220,7 +196,7 @@ claude
 ### OpenCode (same env vars)
 
 ```bash
-source settings.txt
+source .env
 opencode
 ```
 
@@ -232,9 +208,9 @@ Add a `litellm` provider in `openclaw.json`:
 {
   "providers": {
     "litellm": {
-      "baseUrl": "http://LITELLM_HOST:LITELLM_PORT",
+      "baseUrl": "http://$LITELLM_HOST:$LITELLM_PORT",
       "api": "openai-completions",
-      "apiKey": "LITELLM_API_KEY",
+      "apiKey": "sk-your-admin-key",
       "models": [
         {"id": "hermes3:8b", "compat": {"supportsTools": true}},
         {"id": "deepseek-v4-flash", "compat": {"supportsTools": true}}
@@ -268,7 +244,7 @@ request body. Without it, the model accepts the request but never responds
 (the connection hangs). The fix is registering the model with this parameter:
 
 ```bash
-curl -X POST "http://localhost:4000/model/new" \
+curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
   -H "x-api-key: sk-your-admin-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -289,7 +265,7 @@ Claude Code agent:
 
 ```bash
 curl -s -H "x-api-key: sk-your-admin-key" \
-  "http://localhost:4000/model/info" | \
+  "http://localhost:$LITELLM_PORT/model/info" | \
   python3 -c "
 import json, sys
 data = json.load(sys.stdin)
@@ -304,8 +280,8 @@ Models without `fc` cannot use tools and will fail in Claude Code.
 
 ### ANTHROPIC_BASE_URL trailing slash
 
-The URL must NOT have a trailing slash. `http://host:4000/chat/completions` is
-correct; `http://host:4000//chat/completions` returns 404. If your config adds
+The URL must NOT have a trailing slash. `http://host:$LITELLM_PORT/chat/completions` is
+correct; `http://host:$LITELLM_PORT//chat/completions` returns 404. If your config adds
 a trailing slash, remove it.
 
 ### API Key Mismatch
@@ -321,7 +297,7 @@ LiteLLM has two key concepts:
 Run the check-litellm script from this repo:
 
 ```bash
-./tests/check-litellm.sh http://your-litellm-host:4000 sk-your-admin-key
+./tests/check-litellm.sh http://your-litellm-host:$LITELLM_PORT sk-your-admin-key
 ```
 
 It tests:
