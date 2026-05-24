@@ -26,17 +26,41 @@ Without LiteLLM, you would need a model that natively speaks the Anthropic
 protocol — very few open models do. LiteLLM handles the translation so Claude
 Code can talk to any model provider.
 
+## Replace variables
+
+Throughout this guide, replace these placeholders with your actual values:
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `LITELLM_HOST` | `LITELLM_HOST` | IP/hostname where LiteLLM runs |
+| `LITELLM_PORT` | `4000` | Port LiteLLM listens on |
+| `OLLAMA_HOST` | `OLLAMA_HOST` | IP/hostname where Ollama runs |
+| `OLLAMA_PORT` | `11434` | Port Ollama listens on (default) |
+| `LITELLM_API_KEY` | `sk-your-random-admin-key` | Admin key for the proxy |
+
+Wherever you see `$LITELLM_HOST`, `$OLLAMA_HOST`, etc. in a code example,
+substitute your actual value. These are formatted as shell variables so you
+can optionally export them before running the commands.
+
 ## Architecture
-
-This setup runs LiteLLM on a server (`LITELLM_HOST`), connected to:
-
-| Backend | Host | Models |
-|---------|------|--------|
-| Ollama | `OLLAMA_HOST:11434` | hermes3:8b, llama3.1:8b, qwen3.6, etc. |
-| NVIDIA NIM | `integrate.api.nvidia.com` | deepseek-v4-flash (cloud) |
 
 Clients (Claude Code, OpenCode, OpenClaw) point their `ANTHROPIC_BASE_URL` at
 the LiteLLM proxy and never talk to Ollama or NVIDIA directly.
+
+```
+Claude Code / OpenCode       Ollama       NVIDIA NIM
+    │                          │              │
+    │  Anthropic Messages      │ollama API    │OpenAI API
+    ▼                          ▼              ▼
+┌─────────────────────┐   ┌──────────┐  ┌──────────────┐
+│   LiteLLM Proxy     │←──│ Ollama   │  │ NVIDIA NIM   │
+│   :$LITELLM_PORT    │   │ :11434   │  │ (cloud)      │
+└─────────────────────┘   └──────────┘  └──────────────┘
+        │  translates formats
+        │  (Anthropic ↔ OpenAI)
+        ▼
+    Any LLM backend
+```
 
 ## Installation
 
@@ -123,7 +147,7 @@ curl -X POST "http://localhost:4000/model/new" \
     "model_name": "hermes3:8b",
     "litellm_params": {
       "model": "ollama/hermes3:8b",
-      "api_base": "http://OLLAMA_HOST:11434"
+      "api_base": "http://$OLLAMA_HOST:$OLLAMA_PORT"
     }
   }'
 ```
@@ -184,7 +208,7 @@ systemctl enable --now litellm
 ### Claude Code
 
 ```bash
-export ANTHROPIC_BASE_URL="http://LITELLM_HOST:4000"
+export ANTHROPIC_BASE_URL="http://$LITELLM_HOST:$LITELLM_PORT"
 export ANTHROPIC_AUTH_TOKEN="sk-your-admin-key"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="hermes3:8b"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-flash"
@@ -208,9 +232,9 @@ Add a `litellm` provider in `openclaw.json`:
 {
   "providers": {
     "litellm": {
-      "baseUrl": "http://LITELLM_HOST:4000",
+      "baseUrl": "http://LITELLM_HOST:LITELLM_PORT",
       "api": "openai-completions",
-      "apiKey": "sk-your-admin-key",
+      "apiKey": "LITELLM_API_KEY",
       "models": [
         {"id": "hermes3:8b", "compat": {"supportsTools": true}},
         {"id": "deepseek-v4-flash", "compat": {"supportsTools": true}}

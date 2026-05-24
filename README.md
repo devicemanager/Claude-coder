@@ -52,9 +52,9 @@ and (optionally) an NVIDIA NIM provider for direct cloud access:
 {
   "providers": {
     "litellm": {
-      "baseUrl": "http://LITELLM_HOST:4000",
+      "baseUrl": "http://LITELLM_HOST:LITELLM_PORT",
       "api": "openai-completions",
-      "apiKey": "sk-...",
+      "apiKey": "LITELLM_API_KEY",
       "models": [
         {"id": "hermes3:8b", "compat": {"supportsTools": true}},
         {"id": "deepseek-v4-flash", "compat": {"supportsTools": true}}
@@ -86,7 +86,7 @@ model_list:
   - model_name: hermes3:8b
     litellm_params:
       model: ollama/hermes3:8b
-      api_base: http://OLLAMA_HOST:11434
+      api_base: http://OLLAMA_HOST:OLLAMA_PORT
 ```
 
 ## Model Recommendations
