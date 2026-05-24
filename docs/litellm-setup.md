@@ -314,9 +314,11 @@ It tests:
 
 | Model | Avg Response Time | Location |
 |-------|-----------------|----------|
-| hermes3:8b (via Ollama) | ~1s | Local network |
-| deepseek-v4-flash (NVIDIA NIM) | ~30-60s | Cloud (free tier) |
+| hermes3:8b (via Ollama) | ~2.5s | Local network |
+| deepseek-v4-flash (NVIDIA NIM) | ~1-18s | Cloud (free tier) |
+| deepseek-v4-pro (NVIDIA NIM) | >60s | Cloud (free tier) |
 
-Local models are **~30-50x faster** than NVIDIA NIM free tier. The cloud
-fallback is useful for complex tasks where model capability matters more than
-speed. See [README benchmarks](../README.md#benchmarks) for detailed numbers.
+Local models are **~5-20x faster** on average than NVIDIA NIM free tier.
+`deepseek-v4-flash` is usable as a cloud fallback with 1M context — especially
+when `chat_template_kwargs` is set (see [troubleshooting](#chat_template_kwargs-nvidia-nim)).
+`deepseek-v4-pro` is not usable through the free tier at all.

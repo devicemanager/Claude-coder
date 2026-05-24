@@ -93,13 +93,13 @@ model_list:
 
 | Role | Model | Runs On | Latency |
 |------|-------|---------|---------|
-| Haiku (fast) | `hermes3:8b` | Ollama (local) | ~1 s |
-| Sonnet (capable) | `hermes3:8b` | Ollama (local) | ~1 s |
-| Subagent | `hermes3:8b` | Ollama (local) | ~1 s |
+| Haiku (fast) | `hermes3:8b` | Ollama (local) | ~2.5 s |
+| Sonnet (capable) | `deepseek-v4-flash` | NVIDIA NIM (cloud) | ~1-18 s |
+| Subagent | `hermes3:8b` | Ollama (local) | ~2.5 s |
 
-> **Note:** `deepseek-v4-flash` (NVIDIA NIM) was previously recommended as
-> Sonnet, but benchmarks show ~55 s latency — too slow for interactive use.
-> `hermes3:8b` is faster and handles all roles. See [Benchmarks](#benchmarks).
+> **Tip:** `chat_template_kwargs: {}` + `drop_params: true` are required for
+> NVIDIA NIM models — `./tests/register-model.sh nvidia` handles this
+> automatically. See [docs/litellm-setup.md](docs/litellm-setup.md).
 
 Auto-detect yours: `./generate-settings models`
 
@@ -108,27 +108,37 @@ Auto-detect yours: `./generate-settings models`
 Latency and throughput measured against a real LiteLLM proxy (Ollama local +
 NVIDIA NIM cloud). Run `./tests/benchmark.sh` in your own setup to compare.
 
+Results below are **after** applying `chat_template_kwargs: {}` and
+`drop_params: true` to NVIDIA NIM model registrations (see
+`./tests/register-model.sh nvidia`). Without these flags, requests hang or
+time out.
+
 ### Completion Latency
 
 | Model | Task | Time (s) | Tokens | Tok/s |
 |-------|------|----------|--------|-------|
-| hermes3:8b | Haiku | 0.7 | 29 | 41 |
-| hermes3:8b | Explain (64 tok) | 1.3 | 64 | 49 |
-| hermes3:8b | Tool call | 2.4 | — | — |
-| deepseek-v4-flash | Explain (96 tok) | 54.5 | 96 | 1.8 |
+| hermes3:8b | OK | 2.5 | 3 | — |
+| hermes3:8b | Haiku | 2.9 | 150 | 52 |
+| hermes3:8b | Explain | 2.6 | 130 | 50 |
+| hermes3:8b | Tool call | 1.4 | — | — |
+| deepseek-v4-flash | OK | 2.3 | 2 | — |
+| deepseek-v4-flash | Haiku | 1.0 | 19 | 19 |
+| deepseek-v4-flash | Explain | 18.4 | 86 | 5 |
+| deepseek-v4-flash | Tool call | 4.5 | — | — |
 | deepseek-v4-pro | Any | >60 | — | — |
 
 ### Summary
 
 | Model | Avg Latency | Avg Throughput | Tool Support | Runs On |
 |-------|------------|---------------|-------------|---------|
-| **hermes3:8b** | **~1 s** | **~45 tok/s** | **Yes** | Ollama (local) |
-| deepseek-v4-flash | ~55 s | ~2 tok/s | Yes | NVIDIA NIM (cloud) |
-| deepseek-v4-pro | >60 s | — | Yes | NVIDIA NIM (cloud) |
+| **hermes3:8b** | **~2.5 s** | **~50 tok/s** | **Yes** | Ollama (local) |
+| **deepseek-v4-flash** | **~1-18 s** | **~5-19 tok/s** | **Yes** | NVIDIA NIM (cloud) |
+| deepseek-v4-pro | >60 s | — | — | NVIDIA NIM (cloud) |
 
-**Bottom line:** `hermes3:8b` is the only practical model for interactive use.
-NVIDIA NIM models are too slow for real-time coding assistants but may be
-usable for offline batch tasks.
+**Bottom line:** `hermes3:8b` is the primary model — fast, reliable, great
+tool support. `deepseek-v4-flash` works as a cloud fallback with 1M context
+but latency varies (1-18 s). `deepseek-v4-pro` is unusable through the free
+NVIDIA NIM tier.
 
 ## Skills
 
