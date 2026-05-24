@@ -41,12 +41,14 @@ These rules apply to every session in this repo.
 
 ## Skills Reference
 
-Skills are installed globally in `~/.config/opencode/skills/`. Load them by
-name with the `Skill` tool when the situation above matches.
+Skills are installed globally in your skills directory
+(`~/.config/opencode/skills/` or `~/.claude/skills/`). Load them by name with
+the `Skill` tool when the situation above matches.
 
 ## Model Config
 
-All models route through a LiteLLM proxy at `http://LITELLM_HOST:4000/`.
+All models route through a LiteLLM proxy. Set the URL via `ANTHROPIC_BASE_URL` in
+`settings.txt` (see First-time Setup below).
 
 | Role | Model | Type |
 |------|-------|------|
@@ -73,6 +75,8 @@ To generate or update `settings.txt`: `./generate-settings`
 
 ```bash
 cp .env.example .env           # Edit with your LiteLLM URL and key
-cp settings.example.txt settings.txt  # Or run ./generate-settings
+cp settings.example.txt settings.txt
 source settings.txt && claude
 ```
+
+To auto-detect models from your LiteLLM proxy: `./generate-settings`
