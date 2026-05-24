@@ -91,13 +91,44 @@ model_list:
 
 ## Model Recommendations
 
-| Role | Model | Runs On |
-|------|-------|---------|
-| Haiku (fast) | `hermes3:8b` | Ollama (local) |
-| Sonnet (capable) | `deepseek-v4-flash` | NVIDIA NIM (free cloud) |
-| Subagent | `hermes3:8b` | Ollama (local) |
+| Role | Model | Runs On | Latency |
+|------|-------|---------|---------|
+| Haiku (fast) | `hermes3:8b` | Ollama (local) | ~1 s |
+| Sonnet (capable) | `hermes3:8b` | Ollama (local) | ~1 s |
+| Subagent | `hermes3:8b` | Ollama (local) | ~1 s |
+
+> **Note:** `deepseek-v4-flash` (NVIDIA NIM) was previously recommended as
+> Sonnet, but benchmarks show ~55 s latency — too slow for interactive use.
+> `hermes3:8b` is faster and handles all roles. See [Benchmarks](#benchmarks).
 
 Auto-detect yours: `./generate-settings models`
+
+## Benchmarks
+
+Latency and throughput measured against a real LiteLLM proxy (Ollama local +
+NVIDIA NIM cloud). Run `./tests/benchmark.sh` in your own setup to compare.
+
+### Completion Latency
+
+| Model | Task | Time (s) | Tokens | Tok/s |
+|-------|------|----------|--------|-------|
+| hermes3:8b | Haiku | 0.7 | 29 | 41 |
+| hermes3:8b | Explain (64 tok) | 1.3 | 64 | 49 |
+| hermes3:8b | Tool call | 2.4 | — | — |
+| deepseek-v4-flash | Explain (96 tok) | 54.5 | 96 | 1.8 |
+| deepseek-v4-pro | Any | >60 | — | — |
+
+### Summary
+
+| Model | Avg Latency | Avg Throughput | Tool Support | Runs On |
+|-------|------------|---------------|-------------|---------|
+| **hermes3:8b** | **~1 s** | **~45 tok/s** | **Yes** | Ollama (local) |
+| deepseek-v4-flash | ~55 s | ~2 tok/s | Yes | NVIDIA NIM (cloud) |
+| deepseek-v4-pro | >60 s | — | Yes | NVIDIA NIM (cloud) |
+
+**Bottom line:** `hermes3:8b` is the only practical model for interactive use.
+NVIDIA NIM models are too slow for real-time coding assistants but may be
+usable for offline batch tasks.
 
 ## Skills
 
@@ -149,6 +180,9 @@ HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
 ├── CLAUDE.md              # Engineering rules for Claude Code
 ├── README.md
 ├── generate-settings      # Auto-detect models from LiteLLM proxy
+├── tests/
+│   ├── check-litellm.sh   # Proxy health check
+│   └── benchmark.sh       # Model latency benchmarks
 ├── .env                   # Credentials + model config (gitignored)
 ├── .env.example           # Template
 └── .gitignore
