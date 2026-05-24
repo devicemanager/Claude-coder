@@ -131,7 +131,9 @@ curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
 **Ollama models** use `ollama/<model-name>` with `api_base` pointing to the
 Ollama host.
 
-**NVIDIA NIM models** use `openai/<model-path>` with the NVIDIA API key:
+**NVIDIA NIM models** use `openai/<model-path>` with the NVIDIA API key.
+DeepSeek models also require `chat_template_kwargs: {}` and `drop_params: true`
+in `litellm_params` (see [troubleshooting](#chat_template_kwargs-nvidia-nim)):
 
 ```bash
 curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
@@ -142,10 +144,15 @@ curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
     "litellm_params": {
       "model": "openai/deepseek-ai/deepseek-v4-flash",
       "api_base": "https://integrate.api.nvidia.com/v1",
-      "api_key": "nvapi-your-nvidia-key"
+      "api_key": "nvapi-your-nvidia-key",
+      "drop_params": true,
+      "chat_template_kwargs": {}
     }
   }'
 ```
+
+A helper script is at [`tests/register-model.sh`](../tests/register-model.sh) —
+run it to register models interactively or from a JSON file.
 
 **Verify registered models:**
 
@@ -240,22 +247,19 @@ parameters the target model doesn't support.
 ### `chat_template_kwargs` (NVIDIA NIM)
 
 DeepSeek V4 on NVIDIA NIM requires a `chat_template_kwargs` field in the
-request body. Without it, the model accepts the request but never responds
-(the connection hangs). The fix is registering the model with this parameter:
+request body. Without it, tool calls are unreliable — the model may accept
+the request but hang indefinitely. Set both in the model's `litellm_params`:
 
 ```bash
-curl -X POST "http://localhost:$LITELLM_PORT/model/new" \
-  -H "x-api-key: sk-your-admin-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model_name": "deepseek-v4-flash",
-    "litellm_params": {
-      "model": "openai/deepseek-ai/deepseek-v4-flash",
-      "api_base": "https://integrate.api.nvidia.com/v1",
-      "api_key": "nvapi-your-key",
-      "chat_template_kwargs": {}
-    }
-  }'
+"chat_template_kwargs": {},
+"drop_params": true
+```
+
+Use [`tests/register-model.sh`](../tests/register-model.sh) — it handles
+these flags automatically for NVIDIA NIM models:
+
+```bash
+./tests/register-model.sh nvidia deepseek-v4-flash nvapi-your-key
 ```
 
 ### Function Calling Support
@@ -310,8 +314,9 @@ It tests:
 
 | Model | Avg Response Time | Location |
 |-------|-----------------|----------|
-| hermes3:8b (via Ollama) | ~3.5s | Local network |
-| deepseek-v4-flash (NVIDIA NIM) | ~70s | Cloud |
+| hermes3:8b (via Ollama) | ~1s | Local network |
+| deepseek-v4-flash (NVIDIA NIM) | ~30-60s | Cloud (free tier) |
 
-Local models are ~20x faster for simple queries. The cloud fallback is useful
-for complex tasks where a larger model matters more than speed.
+Local models are **~30-50x faster** than NVIDIA NIM free tier. The cloud
+fallback is useful for complex tasks where model capability matters more than
+speed. See [README benchmarks](../README.md#benchmarks) for detailed numbers.

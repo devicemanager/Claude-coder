@@ -166,6 +166,9 @@ done
 ./generate-settings env       # same as above
 ./generate-settings models    # list available models
 ./generate-settings json      # JSON output
+./tests/check-litellm.sh      # proxy health check
+./tests/benchmark.sh          # model latency (source .env first)
+./tests/register-model.sh     # register models via LiteLLM API
 ```
 
 Override model selection:
@@ -182,7 +185,8 @@ HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
 ├── generate-settings      # Auto-detect models from LiteLLM proxy
 ├── tests/
 │   ├── check-litellm.sh   # Proxy health check
-│   └── benchmark.sh       # Model latency benchmarks
+│   ├── benchmark.sh       # Model latency benchmarks
+│   └── register-model.sh  # Register models via API
 ├── .env                   # Credentials + model config (gitignored)
 ├── .env.example           # Template
 └── .gitignore
