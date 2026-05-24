@@ -46,26 +46,30 @@ Skills go in `~/.config/opencode/skills/` (see Skills section).
 ### OpenClaw
 
 Uses `openclaw.json` instead of env vars. Add a LiteLLM provider
-and (optionally) an NVIDIA NIM provider for cloud fallback:
+and (optionally) an NVIDIA NIM provider for direct cloud access:
 
 ```json
 {
-  "providers": [
-    {
-      "name": "litellm",
-      "type": "openai",
+  "providers": {
+    "litellm": {
       "baseUrl": "http://LITELLM_HOST:4000",
+      "api": "openai-completions",
       "apiKey": "sk-...",
-      "models": ["hermes3:8b", "deepseek-v4-flash"]
+      "models": [
+        {"id": "hermes3:8b", "compat": {"supportsTools": true}},
+        {"id": "deepseek-v4-flash", "compat": {"supportsTools": true}}
+      ]
     },
-    {
-      "name": "nvidia-nim",
-      "type": "openai",
+    "nvidia-nim": {
       "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "api": "openai-completions",
       "apiKey": "nvapi-...",
-      "models": ["deepseek-ai/deepseek-v4-flash"]
+      "auth": "api-key",
+      "models": [
+        {"id": "deepseek-ai/deepseek-v4-flash", "compat": {"supportsTools": true}}
+      ]
     }
-  ]
+  }
 }
 ```
 

@@ -137,7 +137,7 @@ case "$OUTPUT" in
 # Sonnet (most capable):         ${SONNET:-<none>}
 # Subagent:                      ${SUBAGENT:-<none>}
 
-export ANTHROPIC_BASE_URL="$LITELLM_URL/"
+export ANTHROPIC_BASE_URL="$LITELLM_URL"
 export ANTHROPIC_AUTH_TOKEN="$ADMIN_KEY"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="${HAIKU}"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="${SONNET}"
@@ -157,7 +157,7 @@ d = {
         'subagent': '$SUBAGENT',
     },
     'env': {
-        'ANTHROPIC_BASE_URL': '$LITELLM_URL/',
+        'ANTHROPIC_BASE_URL': '$LITELLM_URL',
         'ANTHROPIC_AUTH_TOKEN': '$ADMIN_KEY',
         'ANTHROPIC_DEFAULT_HAIKU_MODEL': '$HAIKU',
         'ANTHROPIC_DEFAULT_SONNET_MODEL': '$SONNET',
