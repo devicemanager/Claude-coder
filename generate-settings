@@ -1,0 +1,196 @@
+#!/bin/bash
+# Generate Claude Code settings from a LiteLLM proxy.
+#
+# Reads credentials from:
+#   1. CLI env vars: LITELLM_URL, LITELLM_API_KEY
+#   2. .env file in this directory (LITELLM_URL=..., LITELLM_API_KEY=...)
+#   3. Interactive prompt (if running in a terminal)
+#
+# Usage:
+#   ./generate-settings             # print shell env vars
+#   ./generate-settings env         # same as above
+#   ./generate-settings json        # JSON output
+#   ./generate-settings models      # list available models
+#
+# Override model selection:
+#   HAIKU_MODEL="llama3.1:8b" ./generate-settings
+#   SONNET_MODEL="qwen3.6:latest" ./generate-settings
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── Config ──────────────────────────────────────────────────────────
+
+# Load .env if present
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
+
+LITELLM_URL="${LITELLM_URL:-}"
+ADMIN_KEY="${LITELLM_API_KEY:-${ANTHROPIC_AUTH_TOKEN:-}}"
+OUTPUT="${1:-env}"
+
+HAIKU_OVERRIDE="${HAIKU_MODEL:-}"
+SONNET_OVERRIDE="${SONNET_MODEL:-}"
+SUBAGENT_OVERRIDE="${SUBAGENT_MODEL:-}"
+
+# ── Prompt for missing config ───────────────────────────────────────
+
+if [[ -z "$LITELLM_URL" ]] && [[ -t 1 ]]; then
+  read -r -p "LiteLLM URL (e.g. http://LITELLM_HOST:4000): " LITELLM_URL
+fi
+if [[ -z "$ADMIN_KEY" ]] && [[ -t 1 ]]; then
+  read -r -s -p "LiteLLM API key: " ADMIN_KEY
+  echo
+fi
+
+if [[ -z "$LITELLM_URL" ]]; then
+  echo "Error: LITELLM_URL not set. Create a .env file or export it." >&2
+  exit 1
+fi
+if [[ -z "$ADMIN_KEY" ]]; then
+  echo "Error: LITELLM_API_KEY not set. Create a .env file or export it." >&2
+  exit 1
+fi
+
+# ── Helpers ─────────────────────────────────────────────────────────
+
+fetch_models() {
+  curl -s -H "x-api-key: $ADMIN_KEY" "$LITELLM_URL/model/info" 2>/dev/null
+}
+
+pick_fastest_with_tools() {
+  local json="$1"
+  python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+models = data.get('data', [])
+candidates = []
+for m in models:
+    info = m.get('model_info', {})
+    if not info.get('supports_function_calling'):
+        continue
+    if info.get('mode') != 'chat':
+        continue
+    try:
+        ctx = int(info.get('max_input_tokens', 0) or 0)
+    except (ValueError, TypeError):
+        ctx = 0
+    if ctx > 0:
+        candidates.append((ctx, m['model_name']))
+candidates.sort()
+if candidates:
+    print(candidates[0][1])
+else:
+    sys.exit(1)
+" <<< "$json"
+}
+
+pick_most_capable_with_tools() {
+  local json="$1"
+  python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+models = data.get('data', [])
+candidates = []
+for m in models:
+    info = m.get('model_info', {})
+    if not info.get('supports_function_calling'):
+        continue
+    if info.get('mode') != 'chat':
+        continue
+    try:
+        ctx = int(info.get('max_input_tokens', 0) or 0)
+    except (ValueError, TypeError):
+        ctx = 0
+    if ctx > 0:
+        candidates.append((ctx, m['model_name']))
+candidates.sort(reverse=True)
+if candidates:
+    print(candidates[0][1])
+else:
+    sys.exit(1)
+" <<< "$json"
+}
+
+# ── Main ────────────────────────────────────────────────────────────
+
+JSON=$(fetch_models)
+
+if [[ -z "$JSON" || "$JSON" == "null" ]]; then
+  echo "Error: Could not fetch models from $LITELLM_URL" >&2
+  exit 1
+fi
+
+HAIKU="${HAIKU_OVERRIDE:-$(pick_fastest_with_tools "$JSON" || echo "")}"
+SONNET="${SONNET_OVERRIDE:-$(pick_most_capable_with_tools "$JSON" || echo "")}"
+SUBAGENT="${SUBAGENT_OVERRIDE:-$SONNET}"
+
+case "$OUTPUT" in
+  env)
+    cat <<ENV
+# Claude Code settings — auto-generated $(date +%Y-%m-%d)
+# Source: $LITELLM_URL
+# Haiku (fastest tool-capable):  ${HAIKU:-<none>}
+# Sonnet (most capable):         ${SONNET:-<none>}
+# Subagent:                      ${SUBAGENT:-<none>}
+
+export ANTHROPIC_BASE_URL="$LITELLM_URL/"
+export ANTHROPIC_AUTH_TOKEN="$ADMIN_KEY"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="${HAIKU}"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="${SONNET}"
+export CLAUDE_CODE_SUBAGENT_MODEL="${SUBAGENT}"
+export ANTHROPIC_MODEL="sonnet"
+ENV
+    ;;
+  json)
+    python3 -c "
+import json
+d = {
+    'generated_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+    'source': '$LITELLM_URL',
+    'models': {
+        'haiku': '$HAIKU',
+        'sonnet': '$SONNET',
+        'subagent': '$SUBAGENT',
+    },
+    'env': {
+        'ANTHROPIC_BASE_URL': '$LITELLM_URL/',
+        'ANTHROPIC_AUTH_TOKEN': '$ADMIN_KEY',
+        'ANTHROPIC_DEFAULT_HAIKU_MODEL': '$HAIKU',
+        'ANTHROPIC_DEFAULT_SONNET_MODEL': '$SONNET',
+        'CLAUDE_CODE_SUBAGENT_MODEL': '$SUBAGENT',
+        'ANTHROPIC_MODEL': 'sonnet',
+    }
+}
+print(json.dumps(d, indent=2))
+"
+    ;;
+  models)
+    echo "Available models from $LITELLM_URL:"
+    echo "$JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for m in sorted(data.get('data', []), key=lambda x: x['model_name']):
+    info = m.get('model_info', {})
+    fc = 'fc' if info.get('supports_function_calling') else '  '
+    vis = 'vis' if info.get('supports_vision') else '   '
+    ctx = str(info.get('max_input_tokens', '?'))
+    mode = info.get('mode', '?')
+    print(f'  {m[\"model_name\"]:40s} {mode:8s} {fc:2s} {vis:3s} ctx={str(ctx):>6s}')
+"
+    ;;
+  *)
+    echo "Usage: $0 [env|json|models]"
+    echo ""
+    echo "  env     - shell exports (default)"
+    echo "  json    - JSON output"
+    echo "  models  - list available models"
+    echo ""
+    echo "Config: Set LITELLM_URL and LITELLM_API_KEY in .env or export them."
+    echo "Override model selection with: HAIKU_MODEL, SONNET_MODEL, SUBAGENT_MODEL"
+    exit 1
+    ;;
+esac
