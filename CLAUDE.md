@@ -48,8 +48,8 @@ the situation above matches. See README for install instructions.
 ## Model Config
 
 Models route through the LiteLLM proxy configured in `.env`. Run
-`./generate-settings env >> .env` to append model settings, then
-`source .env` before launching the agent.
+`./generate-settings env >> .env` to append model settings. Use
+`set -a; source .env; set +a` to load and export vars before launching.
 
 ## Repo Structure
 
@@ -67,5 +67,9 @@ Models route through the LiteLLM proxy configured in `.env`. Run
 ```bash
 cp .env.example .env
 ./generate-settings env >> .env
-source .env && claude
+set -a; source .env; set +a; claude
 ```
+
+> **Important:** `.env` variables aren't exported automatically. Always use
+> `set -a` before `source .env` so the `claude` subprocess sees them. Add a
+> shell function to `~/.zshrc` so this works from any directory.

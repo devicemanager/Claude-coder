@@ -203,8 +203,7 @@ claude
 ### OpenCode (same env vars)
 
 ```bash
-source .env
-opencode
+set -a; source .env; set +a; opencode
 ```
 
 ### OpenClaw
@@ -295,6 +294,37 @@ LiteLLM has two key concepts:
   this as their `ANTHROPIC_AUTH_TOKEN`.
 - Virtual keys: Optional scoped keys generated through the LiteLLM Admin UI.
   Not needed for single-user setups.
+
+### Env vars not reaching the client
+
+`.env` files use `VAR=val` syntax without `export`. Running `source .env` loads
+them into your shell, but they don't reach the `claude` or `opencode` subprocess:
+
+```bash
+# BAD: vars are shell-local, claude never sees them
+source .env && claude
+```
+
+Use `set -a` before sourcing to auto-export, or a shell function:
+
+```bash
+# Option 1: one-liner
+set -a; source .env; set +a; claude
+
+# Option 2: add to ~/.zshrc for convenience
+claude() { set -a; source /path/to/claude-coder/.env; set +a; command claude "$@"; }
+```
+
+> **Why `set -a`?** It marks every subsequent variable assignment for export to
+> the environment of future commands. Once `.env` is sourced, `set +a` disables
+> it again. This is the standard POSIX mechanism — no plugins needed.
+
+### `/v1/messages` vs `/messages`
+
+Claude Code calls the Anthropic Messages API at `$ANTHROPIC_BASE_URL/v1/messages`.
+LiteLLM proxies expose this endpoint at `/v1/messages`. A plain `/messages`
+request returns 404, which is normal — the path prefix is built into the API
+route, not a missing config.
 
 ## Testing Your Setup
 

@@ -13,9 +13,15 @@ launch.
 cp .env.example .env                # edit with your LiteLLM URL + key
 ./generate-settings env >> .env     # auto-detect best models
 
-source .env && claude               # Claude Code
-source .env && opencode             # OpenCode
+set -a; source .env; set +a         # load + export env vars
+claude                              # Claude Code
 ```
+
+> **Note:** `.env` files use `VAR=val` without `export` — `source .env` alone won't pass vars to the `claude` subprocess. `set -a` enables auto-export. Add a shell function to `~/.zshrc` for convenience:
+>
+> ```bash
+> claude() { set -a; source /path/to/.env; set +a; command claude "$@"; }
+> ```
 
 ## Per-Tool Setup
 
@@ -25,7 +31,13 @@ source .env && opencode             # OpenCode
 # Install skills (see Skills section below first)
 cp .env.example .env
 ./generate-settings env >> .env
-source .env && claude
+set -a; source .env; set +a; claude
+```
+
+Add a shell function to `~/.zshrc` to skip the `set -a` dance every time:
+
+```bash
+claude() { set -a; source /path/to/claude-coder/.env; set +a; command claude "$@"; }
 ```
 
 The `CLAUDE.md` file bakes in workflow rules — skills load automatically by
@@ -38,7 +50,7 @@ Same env vars, different skills path:
 ```bash
 cp .env.example .env
 ./generate-settings env >> .env
-source .env && opencode
+set -a; source .env; set +a; opencode
 ```
 
 Skills go in `~/.config/opencode/skills/` (see Skills section).
@@ -177,7 +189,7 @@ done
 ./generate-settings models    # list available models
 ./generate-settings json      # JSON output
 ./tests/check-litellm.sh      # proxy health check
-./tests/benchmark.sh          # model latency (source .env first)
+./tests/benchmark.sh          # model latency (set -a; source .env; set +a first)
 ./tests/register-model.sh     # register models via LiteLLM API
 ```
 
