@@ -5,15 +5,24 @@ disciplined engineering workflows built in.
 
 ## Engineering Process
 
-These rules apply to every session in this repo.
+These rules apply to every session in this repo. Skills marked with `(needs install)` are
+referenced optionally but live in the [superpowers](https://github.com/anomalyco/superpowers)
+repo which requires GitHub authentication.
 
-**Before touching code:**
+**Available skills (9arm-skills, no auth required):**
 
-| Situation | Do this first |
-|-----------|---------------|
-| Bug report / crash / test failure | Load `debug-mantra` / `systematic-debugging` |
-| Feature request / new component | Load `brainstorming` + `writing-plans` |
-| Any implementation | Load `test-driven-development` |
+| Skill | When to use |
+|-------|-------------|
+| `debug-mantra` | Bug report / crash / test failure |
+| `scrutinize` | PR review, non-trivial diffs |
+| `post-mortem` | After fixing a bug |
+| `management-talk` | Status / leadership updates |
+
+**Installation:**
+
+```bash
+./install-skills.sh
+```
 
 **While working:**
 
@@ -21,29 +30,11 @@ These rules apply to every session in this repo.
 - Follow existing code conventions (read surrounding files first)
 - Don't add comments unless asked
 
-**Before claiming done:**
-
-- Load `verification-before-completion` — run lint, typecheck, and tests
-- Load `scrutinize` for PRs and non-trivial diffs
-
-**After fixing a bug:**
-
-- Load `post-mortem` — write root cause, mechanism, fix, validation
-
-**Code review:**
-
-- For requesting review: load `requesting-code-review`
-- For receiving review: load `receiving-code-review`
-
-**Status / leadership updates:**
-
-- Load `management-talk` to rewrite engineering updates for VPs, PMs, etc.
-
 ## Skills Reference
 
 Skills are installed into your skills directory (`~/.claude/skills/` or
 `~/.config/opencode/skills/`). Load them by name with the `Skill` tool when
-the situation above matches. See README for install instructions.
+the situation above matches. Run `./install-skills.sh` to install them.
 
 ## Model Config
 
@@ -57,6 +48,13 @@ Models route through the LiteLLM proxy configured in `.env`. Run
 ├── CLAUDE.md              # This file
 ├── README.md              # Setup instructions
 ├── generate-settings      # Auto-detect models
+├── install-skills.sh      # Install engineering workflow skills
+├── docs/
+│   └── litellm-setup.md   # Full proxy setup + troubleshooting
+├── tests/
+│   ├── check-litellm.sh   # Proxy health check
+│   ├── benchmark.sh       # Model latency benchmarks
+│   └── register-model.sh  # Register models via LiteLLM API
 ├── .env                   # Credentials + model config (gitignored)
 ├── .env.example           # Template
 └── .gitignore

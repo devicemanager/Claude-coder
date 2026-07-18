@@ -14,9 +14,10 @@ API_KEY="${LITELLM_API_KEY:-}"
 TIMEOUT=60
 
 # Models to benchmark: haiku (fastest) and sonnet (most capable) picks
-HAIKU="hermes3:8b"
-SONNET="deepseek-v4-flash"
-PRO="deepseek-v4-pro"
+# Falls back to hardcoded defaults if not set in .env
+HAIKU="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-hermes3:8b}"
+SONNET="${ANTHROPIC_DEFAULT_SONNET_MODEL:-deepseek-v4-flash}"
+PRO="${ANTHROPIC_DEFAULT_SONNET_MODEL:-deepseek-v4-pro}"
 EXTRAS=("$HAIKU" "$SONNET" "$PRO")
 
 # Helper: time a single completion

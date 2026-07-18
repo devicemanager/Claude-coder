@@ -64,9 +64,9 @@ and (optionally) an NVIDIA NIM provider for direct cloud access:
 {
   "providers": {
     "litellm": {
-      "baseUrl": "http://LITELLM_HOST:LITELLM_PORT",
+      "baseUrl": "http://YOUR_LITELLM_HOST:YOUR_LITELLM_PORT",
       "api": "openai-completions",
-      "apiKey": "LITELLM_API_KEY",
+      "apiKey": "YOUR_LITELLM_API_KEY",
       "models": [
         {"id": "hermes3:8b", "compat": {"supportsTools": true}},
         {"id": "deepseek-v4-flash", "compat": {"supportsTools": true}}
@@ -205,6 +205,9 @@ HAIKU_MODEL="llama3.1:8b" SONNET_MODEL="qwen3.6:latest" ./generate-settings
 ├── CLAUDE.md              # Engineering rules for Claude Code
 ├── README.md
 ├── generate-settings      # Auto-detect models from LiteLLM proxy
+├── docs/
+│   ├── litellm-setup.md   # LiteLLM installation + troubleshooting
+│   └── litellm-architecture.md  # Architecture decisions explained
 ├── tests/
 │   ├── check-litellm.sh   # Proxy health check
 │   ├── benchmark.sh       # Model latency benchmarks

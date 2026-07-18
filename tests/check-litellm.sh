@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [[ -f "$SCRIPT_DIR/.env" ]]; then
-  export "$(grep -v '^\s*#' "$SCRIPT_DIR/.env" | xargs)"
+  set -a && source "$SCRIPT_DIR/.env" && set +a
 fi
 
 LITELLM_URL="${1:-${LITELLM_URL:-http://localhost:4000}}"
