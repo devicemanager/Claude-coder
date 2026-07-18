@@ -67,22 +67,44 @@ pick_fastest_with_tools() {
 import json, sys
 data = json.load(sys.stdin)
 models = data.get('data', [])
+
+# Priority order for haiku (fast, small models)
+HAIKU_PRIORITY = [
+    'hermes3:8b',           # Local Ollama, fastest
+    'llama-3.1-8b-instruct',# NIM, small
+    'llama3.1:8b',          # Local Ollama
+    'gemma-3-12b',          # NIM, small
+    'llama-3.1-8b-instruct',
+    'nemotron-3-nano-30b',  # NIM, small
+    'llama-3.2-3b-instruct',
+    'llama-3.2-1b-instruct',
+]
+
 candidates = []
 for m in models:
     info = m.get('model_info', {})
+    params = m.get('litellm_params', {})
     if not info.get('supports_function_calling'):
         continue
     if info.get('mode') != 'chat':
         continue
+    name = m['model_name']
     try:
         ctx = int(info.get('max_input_tokens', 0) or 0)
     except (ValueError, TypeError):
         ctx = 0
-    if ctx > 0:
-        candidates.append((ctx, m['model_name']))
+    if ctx <= 0:
+        continue
+    # Score: lower is better for haiku
+    try:
+        priority = HAIKU_PRIORITY.index(name)
+    except ValueError:
+        priority = 999
+    candidates.append((priority, ctx, name))
+
 candidates.sort()
 if candidates:
-    print(candidates[0][1])
+    print(candidates[0][2])
 else:
     sys.exit(1)
 " <<< "$json"
@@ -94,22 +116,45 @@ pick_most_capable_with_tools() {
 import json, sys
 data = json.load(sys.stdin)
 models = data.get('data', [])
+
+# Priority order for sonnet (capable, large models)
+SONNET_PRIORITY = [
+    'deepseek-v4-pro',      # 1M context, best reasoning
+    'qwen3.5-397b',         # Large, capable
+    'nemotron-ultra-253b',  # Large, capable
+    'llama-3.3-70b-instruct',
+    'mistral-large-2',
+    'qwen3.5-122b',
+    'nemotron-super-49b',
+    'deepseek-v4-flash',    # 1M context, fast
+    'qwen3-coder:30b',     # Good for coding
+]
+
 candidates = []
 for m in models:
     info = m.get('model_info', {})
+    params = m.get('litellm_params', {})
     if not info.get('supports_function_calling'):
         continue
     if info.get('mode') != 'chat':
         continue
+    name = m['model_name']
     try:
         ctx = int(info.get('max_input_tokens', 0) or 0)
     except (ValueError, TypeError):
         ctx = 0
-    if ctx > 0:
-        candidates.append((ctx, m['model_name']))
-candidates.sort(reverse=True)
+    if ctx <= 0:
+        continue
+    # Score: lower is better for sonnet
+    try:
+        priority = SONNET_PRIORITY.index(name)
+    except ValueError:
+        priority = 999
+    candidates.append((priority, ctx, name))
+
+candidates.sort()
 if candidates:
-    print(candidates[0][1])
+    print(candidates[0][2])
 else:
     sys.exit(1)
 " <<< "$json"
@@ -170,16 +215,32 @@ print(json.dumps(d, indent=2))
     ;;
   models)
     echo "Available models from $LITELLM_URL:"
+    echo ""
+    echo "NIM Models (cloud, free tier):"
     echo "$JSON" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
+nim = []
+ollama = []
 for m in sorted(data.get('data', []), key=lambda x: x['model_name']):
     info = m.get('model_info', {})
+    params = m.get('litellm_params', {})
+    api_base = params.get('api_base', '')
     fc = 'fc' if info.get('supports_function_calling') else '  '
-    vis = 'vis' if info.get('supports_vision') else '   '
     ctx = str(info.get('max_input_tokens', '?'))
-    mode = info.get('mode', '?')
-    print(f'  {m[\"model_name\"]:40s} {mode:8s} {fc:2s} {vis:3s} ctx={str(ctx):>6s}')
+    name = m['model_name']
+    if 'nvidia' in api_base:
+        nim.append(f'  {name:35s} {fc} ctx={ctx:>10s}')
+    elif '11434' in api_base:
+        ollama.append(f'  {name:35s} {fc} ctx={ctx:>10s}')
+for x in nim: print(x)
+print()
+print('Ollama Models (local):')
+for x in ollama: print(x)
+print()
+print(f'Total: {len(nim)} NIM + {len(ollama)} Ollama = {len(nim)+len(ollama)} models')
+print()
+print('Override: HAIKU_MODEL=x SONNET_MODEL=y ./generate-settings')
 "
     ;;
   *)
